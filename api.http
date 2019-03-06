@@ -1,0 +1,30 @@
+:todos = http://localhost:3000/todos
+
+# create
+POST :todos
+
+{
+"title": "test #1",
+"date": "2019-03-06T00:00:00Z",
+"done": false
+}
+
+# get all
+GET :todos
+
+# get
+GET :todos/2
+
+# update
+PUT :todos
+
+{
+"id": 2,
+"title": "test #2",
+"date": "2019-03-06T00:00:00Z",
+"done": true
+}
+
+# delete
+DELETE :todos/2
+
