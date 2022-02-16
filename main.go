@@ -12,18 +12,20 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"todo-go/todos"
+
+	"github.com/jmoiron/sqlx"
 )
 
 func main() {
 	// TODO extract settings to external config (env?)
-	db, err := sql.Open("postgres", "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable")
+	db, err := sqlx.Open("postgres", "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable")
 	if err != nil {
 		log.WithError(err).Error("Error during creation DB")
 		return
 	}
 	db.SetMaxOpenConns(5)
 
-	migrations(db)
+	migrations(db.DB)
 
 	r := chi.NewRouter()
 
@@ -33,7 +35,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.URLFormat)
 
-	s := &todos.TodoService{db}
+	s := &todos.TodoService{DB: db}
 	r.Mount("/todos", todos.TodosRoute(s))
 
 	if err := http.ListenAndServe(":3000", r); err != nil {

@@ -5,8 +5,8 @@ import (
 )
 
 type Todo struct {
-	ID    int       `json:"id"`
-	Title string    `json:"title"`
-	Date  time.Time `json:"date"`
-	Done  bool      `json:"done"`
+	ID    int       `json:"id" db:"id"`
+	Title string    `json:"title" db:"title"`
+	Date  time.Time `json:"date" db:"date"`
+	Done  bool      `json:"done" db:"done"`
 }
