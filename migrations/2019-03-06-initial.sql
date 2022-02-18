@@ -1,10 +1,11 @@
 -- +migrate Up
-CREATE TABLE todos (
-id serial PRIMARY KEY,
-title varchar NOT NULL,
-done boolean DEFAULT false,
-date timestamp DEFAULT NOW()
+create table todos
+(
+    id    serial primary key,
+    title varchar not null,
+    done  boolean   default false,
+    date  timestamp default now()
 );
 
 -- +migrate Down
-DROP TABLE todos;
+drop table todos;

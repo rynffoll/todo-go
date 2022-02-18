@@ -2,55 +2,66 @@ package main
 
 import (
 	"database/sql"
-	"net/http"
-
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
-
 	_ "github.com/lib/pq"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog/pkgerrors"
 	migrate "github.com/rubenv/sql-migrate"
-	log "github.com/sirupsen/logrus"
-
+	"net/http"
 	"todo-go/todos"
 
 	"github.com/jmoiron/sqlx"
 )
 
+// TODO: prometheus
+// TODO: kafka
+// TODO: https://cobra.dev/ --- cmd package
 func main() {
+	setupLogger()
+
 	// TODO extract settings to external config (env?)
-	db, err := sqlx.Open("postgres", "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable")
+	db, err := setupDB()
 	if err != nil {
-		log.WithError(err).Error("Error during creation DB")
+		log.Fatal().Err(err).Stack().Msg("DB setup failed")
 		return
 	}
-	db.SetMaxOpenConns(5)
+	defer db.Close()
 
 	migrations(db.DB)
 
-	r := chi.NewRouter()
-
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.URLFormat)
-
 	s := &todos.TodoService{DB: db}
-	r.Mount("/todos", todos.TodosRoute(s))
 
-	if err := http.ListenAndServe(":3000", r); err != nil {
-		log.WithError(err).Error("Error during starting server")
+	if err := http.ListenAndServe(":3000", todos.Route(s)); err != nil {
+		log.Fatal().Err(err).Stack().Msg("Server failed")
 	}
 }
 
-func migrations(db *sql.DB) {
-	migrations := &migrate.FileMigrationSource{
-		Dir: "migrations",
-	}
-	n, err := migrate.Exec(db, "postgres", migrations, migrate.Up)
+func setupLogger() {
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+	//log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+}
+
+func setupDB() (*sqlx.DB, error) {
+	db, err := sqlx.Open("postgres", "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable")
 	if err != nil {
-		log.WithError(err).Error("Migrations complete!")
+		log.Fatal().Err(err).Stack().Msg("DB open failed")
+		return db, err
+	}
+	if err = db.Ping(); err != nil {
+		log.Fatal().Err(err).Stack().Msg("DB ping failed")
+		return db, err
+	}
+
+	db.SetMaxOpenConns(5)
+
+	return db, err
+}
+
+func migrations(db *sql.DB) {
+	migrations := &migrate.FileMigrationSource{Dir: "migrations"}
+	if _, err := migrate.Exec(db, "postgres", migrations, migrate.Up); err != nil {
+		log.Fatal().Err(err).Stack().Msg("Migrations failed")
 		return
 	}
-	log.WithField("n", n).Info("Migrations complete!")
+	log.Info().Msg("Migrations completed")
 }

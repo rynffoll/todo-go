@@ -1,6 +1,8 @@
 package todos
 
 import (
+	"github.com/go-chi/chi/middleware"
+	"github.com/rs/zerolog/log"
 	"net/http"
 	"strconv"
 
@@ -8,97 +10,171 @@ import (
 	"github.com/go-chi/render"
 )
 
-func TodosRoute(s Service) chi.Router {
+func Route(s Service) chi.Router {
 	r := chi.NewRouter()
 
-	r.Get("/", getAllHandler(s))
-	r.Post("/", createHandler(s))
-	r.Put("/", updateHandler(s))
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.URLFormat)
 
-	r.Route("/{id}", func(r chi.Router) {
-		r.Get("/", getHandler(s))
-		r.Delete("/", removeHandler(s))
+	r.Route("/todos", func(r chi.Router) {
+		r.Get("/", getAllHandler(s))
+		r.Post("/", createHandler(s))
+		r.Put("/", updateHandler(s))
+
+		r.Route("/{id}", func(r chi.Router) {
+			r.Get("/", getHandler(s))
+			r.Delete("/", removeHandler(s))
+		})
 	})
 
 	return r
 }
 
-func noopHandler() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {}
+type ErrorMessage struct {
+	Message string `json:"message"`
+}
+
+type UpdateMessage struct {
+	Updated int `json:"updated"`
 }
 
 func getAllHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		todos, err := s.GetAll(r.Context())
+		ctx := r.Context()
+
+		todos, err := s.GetAll(ctx)
 		if err != nil {
-			render.JSON(w, r, err)
+			log.Error().
+				Stack().
+				Err(err).
+				Str("request_id", middleware.GetReqID(ctx)).
+				Msg("Internal error")
+			render.JSON(w, r, ErrorMessage{Message: err.Error()})
 			return
 		}
+
 		render.JSON(w, r, todos)
 	}
 }
 
 func createHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		var todo Todo
 		if err := render.DecodeJSON(r.Body, &todo); err != nil {
-			render.JSON(w, r, err)
+			log.Error().
+				Stack().
+				Err(err).
+				Str("request_id", middleware.GetReqID(ctx)).
+				Msg("Internal error")
+			render.JSON(w, r, ErrorMessage{Message: err.Error()})
 			return
 		}
-		todo, err := s.Add(r.Context(), todo)
+
+		todo, err := s.Add(ctx, todo)
 		if err != nil {
-			render.JSON(w, r, err)
+			log.Error().
+				Stack().
+				Err(err).
+				Str("request_id", middleware.GetReqID(ctx)).
+				Msg("Internal error")
+			render.JSON(w, r, ErrorMessage{Message: err.Error()})
 			return
 		}
+
 		render.JSON(w, r, todo)
 	}
 }
 
 func getHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		id, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
-			render.JSON(w, r, err)
+			log.Error().
+				Stack().
+				Err(err).
+				Str("request_id", middleware.GetReqID(ctx)).
+				Msg("Internal error")
+			render.JSON(w, r, ErrorMessage{Message: err.Error()})
 			return
 		}
-		todo, err := s.Get(r.Context(), id)
+
+		todo, err := s.Get(ctx, id)
 		if err != nil {
-			render.JSON(w, r, err)
+			log.Error().
+				Stack().
+				Err(err).
+				Str("request_id", middleware.GetReqID(ctx)).
+				Msg("Internal error")
+			render.JSON(w, r, ErrorMessage{Message: err.Error()})
 			return
 		}
+
 		render.JSON(w, r, todo)
 	}
 }
 
-
 func removeHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		id, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
-			render.JSON(w, r, err)
+			log.Error().
+				Stack().
+				Err(err).
+				Str("request_id", middleware.GetReqID(ctx)).
+				Msg("Internal error")
+			render.JSON(w, r, ErrorMessage{Message: err.Error()})
 			return
 		}
-		count, err := s.Remove(r.Context(), id)
+
+		updated, err := s.Remove(ctx, id)
 		if err != nil {
-			render.JSON(w, r, err)
+			log.Error().
+				Stack().
+				Err(err).
+				Str("request_id", middleware.GetReqID(ctx)).
+				Msg("Internal error")
+			render.JSON(w, r, ErrorMessage{Message: err.Error()})
 			return
 		}
-		render.JSON(w, r, count)
+
+		render.JSON(w, r, UpdateMessage{Updated: updated})
 	}
 }
 
 func updateHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		var todo Todo
 		if err := render.DecodeJSON(r.Body, &todo); err != nil {
-			render.JSON(w, r, err)
+			log.Error().
+				Stack().
+				Err(err).
+				Str("request_id", middleware.GetReqID(ctx)).
+				Msg("Internal error")
+			render.JSON(w, r, ErrorMessage{Message: err.Error()})
 			return
 		}
-		count, err := s.Update(r.Context(), todo)
+
+		updated, err := s.Update(ctx, todo)
 		if err != nil {
-			render.JSON(w, r, err)
+			log.Error().
+				Stack().
+				Err(err).
+				Str("request_id", middleware.GetReqID(ctx)).
+				Msg("Internal error")
+			render.JSON(w, r, ErrorMessage{Message: err.Error()})
 			return
 		}
-		render.JSON(w, r, count)
+
+		render.JSON(w, r, UpdateMessage{Updated: updated})
 	}
 }
