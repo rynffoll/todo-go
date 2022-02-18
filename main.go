@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	_ "github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
@@ -13,9 +14,9 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// TODO: prometheus
 // TODO: kafka
 // TODO: https://cobra.dev/ --- cmd package
+// TODO: OpenTelemetry
 func main() {
 	setupLogger()
 
@@ -31,7 +32,9 @@ func main() {
 
 	s := &todos.TodoService{DB: db}
 
-	if err := http.ListenAndServe(":3000", todos.Route(s)); err != nil {
+	r := todos.Route(s)
+	r.Mount("/metrics", promhttp.Handler())
+	if err := http.ListenAndServe(":3000", r); err != nil {
 		log.Fatal().Err(err).Stack().Msg("Server failed")
 	}
 }

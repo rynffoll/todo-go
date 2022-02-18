@@ -1,3 +1,4 @@
+:host = http://localhost:3000
 :todos = http://localhost:3000/todos
 
 # create
@@ -27,4 +28,10 @@ PUT :todos
 
 # delete
 DELETE :todos/2
+
+
+### Infra
+
+# metrics
+GET :host/metrics
 

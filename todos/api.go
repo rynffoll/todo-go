@@ -16,14 +16,13 @@ func Route(s Service) chi.Router {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.URLFormat)
 
 	r.Route("/todos", func(r chi.Router) {
 		r.Get("/", getAllHandler(s))
 		r.Post("/", createHandler(s))
 		r.Put("/", updateHandler(s))
 
-		r.Route("/{id}", func(r chi.Router) {
+		r.With(middleware.URLFormat).Route("/{id}", func(r chi.Router) {
 			r.Get("/", getHandler(s))
 			r.Delete("/", removeHandler(s))
 		})
@@ -51,7 +50,9 @@ func getAllHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 				Err(err).
 				Str("request_id", middleware.GetReqID(ctx)).
 				Msg("Internal error")
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, ErrorMessage{Message: err.Error()})
+
 			return
 		}
 
@@ -70,7 +71,9 @@ func createHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 				Err(err).
 				Str("request_id", middleware.GetReqID(ctx)).
 				Msg("Internal error")
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, ErrorMessage{Message: err.Error()})
+
 			return
 		}
 
@@ -81,7 +84,9 @@ func createHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 				Err(err).
 				Str("request_id", middleware.GetReqID(ctx)).
 				Msg("Internal error")
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, ErrorMessage{Message: err.Error()})
+
 			return
 		}
 
@@ -100,7 +105,9 @@ func getHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 				Err(err).
 				Str("request_id", middleware.GetReqID(ctx)).
 				Msg("Internal error")
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, ErrorMessage{Message: err.Error()})
+
 			return
 		}
 
@@ -111,7 +118,9 @@ func getHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 				Err(err).
 				Str("request_id", middleware.GetReqID(ctx)).
 				Msg("Internal error")
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, ErrorMessage{Message: err.Error()})
+
 			return
 		}
 
@@ -130,7 +139,9 @@ func removeHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 				Err(err).
 				Str("request_id", middleware.GetReqID(ctx)).
 				Msg("Internal error")
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, ErrorMessage{Message: err.Error()})
+
 			return
 		}
 
@@ -141,7 +152,9 @@ func removeHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 				Err(err).
 				Str("request_id", middleware.GetReqID(ctx)).
 				Msg("Internal error")
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, ErrorMessage{Message: err.Error()})
+
 			return
 		}
 
@@ -160,7 +173,9 @@ func updateHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 				Err(err).
 				Str("request_id", middleware.GetReqID(ctx)).
 				Msg("Internal error")
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, ErrorMessage{Message: err.Error()})
+
 			return
 		}
 
@@ -171,7 +186,9 @@ func updateHandler(s Service) func(w http.ResponseWriter, r *http.Request) {
 				Err(err).
 				Str("request_id", middleware.GetReqID(ctx)).
 				Msg("Internal error")
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, ErrorMessage{Message: err.Error()})
+
 			return
 		}
 
