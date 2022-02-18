@@ -2,13 +2,16 @@ package main
 
 import (
 	"database/sql"
+	"github.com/go-chi/chi"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
 	migrate "github.com/rubenv/sql-migrate"
 	"net/http"
+	"time"
 	"todo-go/todos"
 
 	"github.com/jmoiron/sqlx"
@@ -32,8 +35,25 @@ func main() {
 
 	s := &todos.TodoService{DB: db}
 
-	r := todos.Route(s)
+	r := chi.NewRouter()
+
+	r.Use(hlog.NewHandler(log.Logger))
+	r.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+		hlog.FromRequest(r).Info().
+			Str("method", r.Method).
+			Stringer("url", r.URL).
+			Int("status", status).
+			Int("size", size).
+			Dur("duration", duration).
+			Msg("")
+	}))
+	r.Use(hlog.RemoteAddrHandler("ip"))
+	r.Use(hlog.UserAgentHandler("user_agent"))
+	r.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
+
+	r.Mount("/", todos.Route(s))
 	r.Mount("/metrics", promhttp.Handler())
+
 	if err := http.ListenAndServe(":3000", r); err != nil {
 		log.Fatal().Err(err).Stack().Msg("Server failed")
 	}
